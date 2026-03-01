@@ -178,6 +178,8 @@ const Index = () => {
         <AdSlot slotName="footer_above" fallbackHeight="h-[90px]" />
       </div>
 
+      <AdSlot slotName="social_bar" fallbackHeight="h-0" className="fixed bottom-0 left-0 right-0 z-[999]" />
+
       <footer className="border-t border-border py-8">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-sm text-muted-foreground">
