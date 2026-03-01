@@ -9,6 +9,7 @@ import { ChevronDown, Megaphone, ExternalLink, LogIn, LogOut, Shield, User } fro
 import { AdSlot } from '@/components/AdSlot';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Link } from 'react-router-dom';
+import logo from '@/assets/logo.webp';
 
 const Index = () => {
   const { user, isAdmin, signOut, displayName, avatarUrl } = useAuth();
@@ -37,9 +38,10 @@ const Index = () => {
       <AnnouncementBanner />
       <nav className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-lg font-bold text-foreground">
-            Ancient Blood
-          </span>
+          <Link to="/" className="flex items-center gap-2">
+            <img src={logo} alt="Ancient Blood" className="w-8 h-8 object-contain" />
+            <span className="text-lg font-bold text-foreground">Ancient Blood</span>
+          </Link>
           <div className="flex items-center gap-5">
             <span className="text-sm text-muted-foreground">
               {available} available
