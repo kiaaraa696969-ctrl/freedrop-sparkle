@@ -23,10 +23,19 @@ const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [account, setAccount] = useState<AccountDrop | null>(null);
+  const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
-    if (id) fetchAccountById(id).then(setAccount);
+    if (id) {
+      setLoading(true);
+      fetchAccountById(id)
+        .then(setAccount)
+        .catch(() => setAccount(null))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -49,6 +58,14 @@ const AccountDetail = () => {
       setCountdown(COUNTDOWN_SECONDS);
     }
   }, [countdown]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!account) {
     return (
