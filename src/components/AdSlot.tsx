@@ -52,16 +52,46 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
   useEffect(() => {
     if (!loaded || !adCode || !containerRef.current) return;
     const container = containerRef.current;
-    container.innerHTML = adCode;
+    // Clear previous content
+    container.innerHTML = '';
 
-    const scripts = container.querySelectorAll('script');
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach((attr) => {
-        newScript.setAttribute(attr.name, attr.value);
-      });
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    // Parse the ad code HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = adCode;
+
+    // Separate scripts and non-script nodes
+    const scripts: { src?: string; text?: string }[] = [];
+    const nodes: Node[] = [];
+
+    Array.from(temp.childNodes).forEach((node) => {
+      if (node instanceof HTMLScriptElement) {
+        scripts.push({
+          src: node.src || undefined,
+          text: node.textContent || undefined,
+        });
+      } else {
+        nodes.push(node.cloneNode(true));
+      }
+    });
+
+    // Append non-script nodes
+    nodes.forEach((n) => container.appendChild(n));
+
+    // Execute scripts sequentially to preserve order (atOptions must be set before invoke.js)
+    let chain = Promise.resolve();
+    scripts.forEach(({ src, text }) => {
+      chain = chain.then(() => new Promise<void>((resolve) => {
+        const s = document.createElement('script');
+        if (src) {
+          s.src = src;
+          s.onload = () => resolve();
+          s.onerror = () => resolve();
+        } else {
+          s.textContent = text || '';
+        }
+        container.appendChild(s);
+        if (!src) resolve();
+      }));
     });
   }, [adCode, loaded]);
 
