@@ -45,7 +45,7 @@ export function RightSidebar({ accounts }: RightSidebarProps) {
               return (
                 <Link
                   key={account.id}
-                  to={`/account/${account.id}`}
+                  to={`/account/${account.slug}`}
                   className="flex items-center gap-3 px-3 py-3 hover:bg-muted/50 transition-colors group"
                 >
                   <span className="text-xs font-bold text-muted-foreground w-5 text-center shrink-0">

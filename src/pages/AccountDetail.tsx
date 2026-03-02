@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { AccountDrop, CATEGORY_COLORS, fetchAccountById, claimAccount } from '@/lib/accounts';
+import { AccountDrop, CATEGORY_COLORS, fetchAccountBySlug, claimAccount } from '@/lib/accounts';
 import { ArrowLeft, AlertTriangle, Timer, Shield } from 'lucide-react';
 import { AdSlot } from '@/components/AdSlot';
 import thumbSteam from '@/assets/thumb-steam.jpg';
@@ -20,23 +20,23 @@ const THUMBNAILS: Record<string, string> = {
 const COUNTDOWN_SECONDS = 10;
 
 const AccountDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [account, setAccount] = useState<AccountDrop | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
-    if (id) {
+    if (slug) {
       setLoading(true);
-      fetchAccountById(id)
+      fetchAccountBySlug(slug)
         .then(setAccount)
         .catch(() => setAccount(null))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [id]);
+  }, [slug]);
 
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
@@ -49,7 +49,7 @@ const AccountDetail = () => {
       if (!account.isClaimed) {
         claimAccount(account.id);
       }
-      navigate(`/account/${account.id}/reveal`);
+      navigate(`/account/${account.slug}/reveal`);
     }
   }, [countdown, account, navigate]);
 

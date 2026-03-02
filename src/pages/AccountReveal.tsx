@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AccountDrop, CATEGORY_COLORS, fetchAccountById } from '@/lib/accounts';
+import { AccountDrop, CATEGORY_COLORS, fetchAccountBySlug } from '@/lib/accounts';
 import { ArrowLeft, Copy, CheckCircle2, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { AdSlot } from '@/components/AdSlot';
 import thumbSteam from '@/assets/thumb-steam.jpg';
@@ -18,22 +18,22 @@ const THUMBNAILS: Record<string, string> = {
 };
 
 const AccountReveal = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [account, setAccount] = useState<AccountDrop | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
+    if (slug) {
       setLoading(true);
-      fetchAccountById(id)
+      fetchAccountBySlug(slug)
         .then(setAccount)
         .catch(() => setAccount(null))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [id]);
+  }, [slug]);
 
   const handleCopy = (value: string, type: string) => {
     navigator.clipboard.writeText(value);
@@ -67,7 +67,7 @@ const AccountReveal = () => {
     <div className="min-h-screen bg-background">
       <nav className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
-          <Link to={`/account/${account.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link to={`/account/${account.slug}`} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <span className="text-base font-semibold text-foreground truncate">
