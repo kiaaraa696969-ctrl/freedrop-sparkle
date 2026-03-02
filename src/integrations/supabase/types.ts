@@ -31,6 +31,7 @@ export type Database = {
           password: string
           plan_details: string | null
           screenshot: string | null
+          slug: string | null
           thumbnail: string | null
           title: string
         }
@@ -50,6 +51,7 @@ export type Database = {
           password?: string
           plan_details?: string | null
           screenshot?: string | null
+          slug?: string | null
           thumbnail?: string | null
           title: string
         }
@@ -69,6 +71,7 @@ export type Database = {
           password?: string
           plan_details?: string | null
           screenshot?: string | null
+          slug?: string | null
           thumbnail?: string | null
           title?: string
         }

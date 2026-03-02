@@ -24,8 +24,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/account/:id" element={<AccountDetail />} />
-            <Route path="/account/:id/reveal" element={<AccountReveal />} />
+            <Route path="/account/:slug" element={<AccountDetail />} />
+            <Route path="/account/:slug/reveal" element={<AccountReveal />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

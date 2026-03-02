@@ -6,6 +6,7 @@ export type NetflixType = 'account' | 'cookies';
 
 export interface AccountDrop {
   id: string;
+  slug: string;
   title: string;
   category: AccountCategory;
   email: string;
@@ -32,10 +33,24 @@ export const CATEGORY_COLORS: Record<AccountCategory, { color: string; icon: str
   Other: { color: '#9b59b6', icon: '🎁' },
 };
 
+function generateSlug(title: string, id: string): string {
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') +
+    '-' +
+    id.slice(0, 8)
+  );
+}
+
 // Map DB row to AccountDrop
 function mapRow(row: any): AccountDrop {
   return {
     id: row.id,
+    slug: row.slug || generateSlug(row.title, row.id),
     title: row.title,
     category: row.category as AccountCategory,
     email: row.email,
@@ -76,6 +91,16 @@ export async function fetchAccountById(id: string): Promise<AccountDrop | null> 
   return mapRow(data);
 }
 
+export async function fetchAccountBySlug(slug: string): Promise<AccountDrop | null> {
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapRow(data);
+}
+
 export async function claimAccount(id: string): Promise<void> {
   await supabase
     .from('accounts')
@@ -83,7 +108,9 @@ export async function claimAccount(id: string): Promise<void> {
     .eq('id', id);
 }
 
-export async function addAccount(account: Omit<AccountDrop, 'id' | 'isClaimed' | 'droppedAt'>): Promise<AccountDrop | null> {
+export async function addAccount(account: Omit<AccountDrop, 'id' | 'slug' | 'isClaimed' | 'droppedAt'>): Promise<AccountDrop | null> {
+  const tempId = crypto.randomUUID();
+  const slug = generateSlug(account.title, tempId);
   const { data, error } = await supabase
     .from('accounts')
     .insert({
@@ -98,12 +125,19 @@ export async function addAccount(account: Omit<AccountDrop, 'id' | 'isClaimed' |
       cookie_file: account.cookieFile || null,
       cookie_file_name: account.cookieFileName || null,
       plan_details: account.planDetails || null,
+      slug: slug,
     })
     .select()
     .single();
   if (error) {
     console.error('Failed to add account:', error);
     return null;
+  }
+  // Update slug with actual id
+  const finalSlug = generateSlug(account.title, data.id);
+  if (finalSlug !== slug) {
+    await supabase.from('accounts').update({ slug: finalSlug }).eq('id', data.id);
+    data.slug = finalSlug;
   }
   return mapRow(data);
 }

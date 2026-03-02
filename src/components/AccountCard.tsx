@@ -27,7 +27,7 @@ export function AccountCard({ account }: AccountCardProps) {
 
   return (
     <Link
-      to={`/account/${account.id}`}
+      to={`/account/${account.slug}`}
       className="group block bg-card rounded-2xl overflow-hidden border border-border card-hover"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
