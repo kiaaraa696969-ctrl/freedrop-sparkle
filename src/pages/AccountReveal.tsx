@@ -20,10 +20,19 @@ const THUMBNAILS: Record<string, string> = {
 const AccountReveal = () => {
   const { id } = useParams<{ id: string }>();
   const [account, setAccount] = useState<AccountDrop | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) fetchAccountById(id).then(setAccount);
+    if (id) {
+      setLoading(true);
+      fetchAccountById(id)
+        .then(setAccount)
+        .catch(() => setAccount(null))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [id]);
 
   const handleCopy = (value: string, type: string) => {
@@ -31,6 +40,14 @@ const AccountReveal = () => {
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!account) {
     return (
