@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AdSlotProps {
@@ -7,19 +7,40 @@ interface AdSlotProps {
   className?: string;
 }
 
+/* ─── Global ad cache ─── */
 let adCache: Record<string, string> | null = null;
 let adCachePromise: Promise<void> | null = null;
 
-const SLOT_DEFAULT_HEIGHTS: Record<string, number> = {
-  hero_below: 90,
-  feed_between: 90,
-  footer_above: 90,
-  detail_top: 90,
-  detail_bottom: 250,
-  sidebar_top: 250,
-  sidebar_middle: 300,
-  sidebar_bottom: 250,
-  social_bar: 60,
+/* Track which zone keys have been rendered on this page to prevent duplicates */
+const renderedZones = new Set<string>();
+
+/* Extract the Adsterra zone key from ad code */
+function extractZoneKey(adCode: string): string | null {
+  // Match 'key' : 'xxx' or key: 'xxx'
+  const keyMatch = adCode.match(/['"]?key['"]?\s*:\s*['"]([a-f0-9]{32})['"]/);
+  if (keyMatch) return keyMatch[1];
+
+  // Match /xxx/invoke.js or /xx/xx/xx/xxx.js
+  const srcMatch = adCode.match(/encyclopediainsoluble\.com\/([a-f0-9]{32})\/invoke\.js/);
+  if (srcMatch) return srcMatch[1];
+
+  const srcMatch2 = adCode.match(/encyclopediainsoluble\.com\/[a-f0-9]{2}\/[a-f0-9]{2}\/[a-f0-9]{2}\/([a-f0-9]{32})\.js/);
+  if (srcMatch2) return srcMatch2[1];
+
+  return null;
+}
+
+/* ─── Slot config ─── */
+const SLOT_CONFIG: Record<string, { height: number; width: number; eager: boolean; responsive: boolean }> = {
+  hero_below:     { height: 90,  width: 728, eager: true,  responsive: true },
+  feed_between:   { height: 60,  width: 468, eager: false, responsive: true },
+  footer_above:   { height: 90,  width: 728, eager: false, responsive: true },
+  detail_top:     { height: 90,  width: 728, eager: true,  responsive: true },
+  detail_bottom:  { height: 250, width: 300, eager: false, responsive: true },
+  sidebar_top:    { height: 250, width: 300, eager: false, responsive: false },
+  sidebar_middle: { height: 300, width: 300, eager: false, responsive: false },
+  sidebar_bottom: { height: 250, width: 300, eager: false, responsive: false },
+  social_bar:     { height: 60,  width: 0,   eager: true,  responsive: false },
 };
 
 async function loadAds() {
@@ -30,66 +51,67 @@ async function loadAds() {
   }
 
   adCachePromise = (async () => {
-    const { data, error } = await supabase
-      .from('ad_slots')
-      .select('slot_name, ad_code')
-      .eq('is_active', true);
+    try {
+      const { data, error } = await supabase
+        .from('ad_slots')
+        .select('slot_name, ad_code')
+        .eq('is_active', true);
 
-    if (error) {
-      console.error('Failed to load ads:', error);
+      if (error) {
+        console.error('Failed to load ads:', error);
+        adCache = {};
+        return;
+      }
+
       adCache = {};
-      return;
+      (data || []).forEach((row: any) => {
+        adCache![row.slot_name] = row.ad_code;
+      });
+    } catch (e) {
+      console.error('Ad load error:', e);
+      adCache = {};
     }
-
-    adCache = {};
-    (data || []).forEach((row: any) => {
-      adCache![row.slot_name] = row.ad_code;
-    });
   })();
 
   await adCachePromise;
 }
 
-function getAdHeight(adCode: string, slotName: string): number {
-  const explicitHeight = adCode.match(/['"]height['"]\s*:\s*(\d+)/i)?.[1]
-    || adCode.match(/height\s*:\s*(\d+)/i)?.[1];
-
-  if (explicitHeight) return Number(explicitHeight);
-  return SLOT_DEFAULT_HEIGHTS[slotName] || 250;
-}
-
-function buildSrcDoc(adCode: string): string {
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        overflow: hidden;
-        background: transparent;
-      }
-      * { box-sizing: border-box; }
-    </style>
-  </head>
-  <body>
-    ${adCode}
-  </body>
-</html>`;
-}
-
 export function invalidateAdCache() {
   adCache = null;
   adCachePromise = null;
+  renderedZones.clear();
 }
 
+/* Reset rendered zones on SPA navigation */
+function resetRenderedZonesOnNavigation() {
+  renderedZones.clear();
+}
+
+// Listen for route changes to reset zone tracking
+if (typeof window !== 'undefined') {
+  let lastPath = window.location.pathname;
+  const observer = new MutationObserver(() => {
+    if (window.location.pathname !== lastPath) {
+      lastPath = window.location.pathname;
+      resetRenderedZonesOnNavigation();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+/* ─── Component ─── */
 export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' }: AdSlotProps) {
   const [adCode, setAdCode] = useState<string>('');
   const [loaded, setLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scriptInjected = useRef(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
+  const config = SLOT_CONFIG[slotName] || { height: 250, width: 300, eager: false, responsive: true };
+
+  // Load ad codes
   useEffect(() => {
     let cancelled = false;
 
@@ -97,10 +119,24 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
       try {
         await loadAds();
         if (!cancelled) {
-          setAdCode(adCache?.[slotName] || '');
+          const code = adCache?.[slotName] || '';
+          setAdCode(code);
+
+          // Check for zone duplication
+          if (code) {
+            const zoneKey = extractZoneKey(code);
+            if (zoneKey) {
+              if (renderedZones.has(zoneKey)) {
+                console.warn(`[AdSlot] Duplicate zone ${zoneKey} blocked for slot "${slotName}". Each slot needs a unique Adsterra zone.`);
+                setIsDuplicate(true);
+              } else {
+                renderedZones.add(zoneKey);
+              }
+            }
+          }
         }
       } catch (error) {
-        console.error('Ad initialization failed:', error);
+        console.error('Ad init failed:', error);
         if (!cancelled) setAdCode('');
       } finally {
         if (!cancelled) setLoaded(true);
@@ -108,38 +144,159 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
     };
 
     init();
+
     return () => {
       cancelled = true;
+      // Clean up zone tracking on unmount
+      if (adCode) {
+        const zoneKey = extractZoneKey(adCode);
+        if (zoneKey) renderedZones.delete(zoneKey);
+      }
     };
   }, [slotName]);
 
-  if (loaded && (!adCode || adCode.trim() === '')) {
+  // Lazy loading via IntersectionObserver
+  useEffect(() => {
+    if (config.eager) {
+      setIsVisible(true);
+      return;
+    }
+
+    const el = containerRef.current;
+    if (!el) return;
+
+    observerRef.current = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observerRef.current?.disconnect();
+        }
+      },
+      { rootMargin: '200px' } // Start loading 200px before viewport
+    );
+
+    observerRef.current.observe(el);
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, [loaded, config.eager]);
+
+  // Inject scripts when visible
+  const injectAd = useCallback(() => {
+    if (scriptInjected.current || !containerRef.current || !adCode || isDuplicate) return;
+    scriptInjected.current = true;
+
+    const container = containerRef.current;
+    container.innerHTML = '';
+
+    // Parse ad HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = adCode;
+
+    const scripts: { src?: string; text?: string; async?: boolean }[] = [];
+    const nodes: Node[] = [];
+
+    Array.from(temp.childNodes).forEach((node) => {
+      if (node instanceof HTMLScriptElement) {
+        scripts.push({
+          src: node.src || undefined,
+          text: node.textContent || undefined,
+          async: node.async,
+        });
+      } else {
+        nodes.push(node.cloneNode(true));
+      }
+    });
+
+    // Append non-script nodes first (containers, divs)
+    nodes.forEach((n) => container.appendChild(n));
+
+    // Execute scripts sequentially (atOptions MUST be set before invoke.js)
+    let chain = Promise.resolve();
+    scripts.forEach(({ src, text, async: isAsync }) => {
+      chain = chain.then(
+        () =>
+          new Promise<void>((resolve) => {
+            try {
+              const s = document.createElement('script');
+              s.type = 'text/javascript';
+
+              if (src) {
+                s.src = src;
+                if (isAsync) s.async = true;
+                s.onload = () => resolve();
+                s.onerror = () => {
+                  console.warn(`[AdSlot] Script failed to load for "${slotName}": ${src}`);
+                  resolve();
+                };
+                container.appendChild(s);
+              } else if (text) {
+                s.textContent = text;
+                container.appendChild(s);
+                resolve();
+              } else {
+                resolve();
+              }
+            } catch (e) {
+              console.warn(`[AdSlot] Script execution error for "${slotName}":`, e);
+              resolve();
+            }
+          })
+      );
+    });
+  }, [adCode, slotName, isDuplicate]);
+
+  useEffect(() => {
+    if (isVisible && loaded && adCode && !isDuplicate) {
+      injectAd();
+    }
+  }, [isVisible, loaded, adCode, isDuplicate, injectAd]);
+
+  // ─── Empty / not loaded states ───
+  if (loaded && (!adCode || adCode.trim() === '' || isDuplicate)) {
+    // For social_bar, render nothing if empty/duplicate
+    if (slotName === 'social_bar') return null;
+
     return (
-      <div className={`${fallbackHeight} bg-muted border border-border border-dashed rounded-2xl flex flex-col items-center justify-center ${className}`}>
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Advertisement</span>
+      <div
+        className={`${fallbackHeight} bg-muted border border-border border-dashed rounded-2xl flex flex-col items-center justify-center ${className}`}
+      >
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Advertisement
+        </span>
         <span className="text-[10px] text-muted-foreground/60 mt-1">Ad space</span>
       </div>
     );
   }
 
   if (!loaded) {
-    return <div className={`${fallbackHeight} bg-muted/40 rounded-2xl ${className}`} />;
+    // Reserve space to prevent layout shift
+    const reservedHeight = config.height;
+    return (
+      <div
+        ref={containerRef}
+        className={`rounded-2xl bg-muted/30 ${className}`}
+        style={{ minHeight: `${reservedHeight}px` }}
+      />
+    );
   }
 
-  const adHeight = getAdHeight(adCode, slotName);
-  const loadingMode: 'eager' | 'lazy' = ['hero_below', 'detail_top', 'social_bar'].includes(slotName) ? 'eager' : 'lazy';
+  // ─── Render ───
+  const isSocialBar = slotName === 'social_bar';
 
   return (
-    <div className={`ad-slot w-full overflow-hidden ${className}`} data-slot={slotName}>
-      <iframe
-        title={`ad-${slotName}`}
-        srcDoc={buildSrcDoc(adCode)}
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-        loading={loadingMode}
-        className="w-full border-0 block"
-        style={{ height: `${adHeight}px` }}
-      />
-    </div>
+    <div
+      ref={containerRef}
+      className={`ad-slot w-full overflow-hidden ${className}`}
+      data-slot={slotName}
+      style={{
+        minHeight: isSocialBar ? undefined : `${config.height}px`,
+        maxWidth: config.responsive && config.width > 0 ? '100%' : undefined,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    />
   );
 }
-
