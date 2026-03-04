@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { useAdBlockDetector } from "@/hooks/useAdBlockDetector";
+import { AdBlockOverlay } from "@/components/AdBlockOverlay";
 import Index from "./pages/Index";
 import AccountDetail from "./pages/AccountDetail";
 import AccountReveal from "./pages/AccountReveal";
@@ -14,23 +16,34 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  const { adBlockDetected, recheck } = useAdBlockDetector();
+
+  return (
+    <>
+      {adBlockDetected && <AdBlockOverlay onRecheck={recheck} />}
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/account/:slug" element={<AccountDetail />} />
+          <Route path="/account/:slug/reveal" element={<AccountReveal />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/account/:slug" element={<AccountDetail />} />
-            <Route path="/account/:slug/reveal" element={<AccountReveal />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <AppContent />
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
