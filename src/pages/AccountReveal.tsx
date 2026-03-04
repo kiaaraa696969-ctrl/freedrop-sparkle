@@ -24,6 +24,7 @@ const AccountReveal = () => {
   const [account, setAccount] = useState<AccountDrop | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const { adBlockDetected, recheck } = useAdBlockDetector();
 
   useEffect(() => {
     if (slug) {
