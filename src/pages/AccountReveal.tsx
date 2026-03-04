@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { AccountDrop, CATEGORY_COLORS, fetchAccountBySlug } from '@/lib/accounts';
 import { ArrowLeft, Copy, CheckCircle2, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { AdSlot } from '@/components/AdSlot';
+import { useAdBlockDetector } from '@/hooks/useAdBlockDetector';
+import { AdBlockOverlay } from '@/components/AdBlockOverlay';
 import thumbSteam from '@/assets/thumb-steam.jpg';
 import thumbCrunchyroll from '@/assets/thumb-crunchyroll.jpg';
 import thumbNetflix from '@/assets/thumb-netflix.jpg';
@@ -22,6 +24,7 @@ const AccountReveal = () => {
   const [account, setAccount] = useState<AccountDrop | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const { adBlockDetected, recheck } = useAdBlockDetector();
 
   useEffect(() => {
     if (slug) {
@@ -65,6 +68,7 @@ const AccountReveal = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {adBlockDetected && <AdBlockOverlay onRecheck={recheck} />}
       <nav className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
           <Link to={`/account/${account.slug}`} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -105,7 +109,7 @@ const AccountReveal = () => {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 mb-6">
+        <div className={`bg-card border border-border rounded-2xl p-6 sm:p-8 mb-6 ${adBlockDetected ? 'blur-lg select-none pointer-events-none' : ''}`}>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-5">
             {account.category === 'Netflix' && account.netflixType === 'cookies' ? 'Cookie File' : 'Account Credentials'}
           </h2>
