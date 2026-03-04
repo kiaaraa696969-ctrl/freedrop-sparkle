@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { AccountDrop, CATEGORY_COLORS, fetchAccountBySlug } from '@/lib/accounts';
 import { ArrowLeft, Copy, CheckCircle2, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { AdSlot } from '@/components/AdSlot';
+import { useAdBlockDetector } from '@/hooks/useAdBlockDetector';
+import { AdBlockOverlay } from '@/components/AdBlockOverlay';
 import thumbSteam from '@/assets/thumb-steam.jpg';
 import thumbCrunchyroll from '@/assets/thumb-crunchyroll.jpg';
 import thumbNetflix from '@/assets/thumb-netflix.jpg';
