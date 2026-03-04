@@ -44,35 +44,75 @@ export function useAdBlockDetector() {
         results.push(false);
       }
 
-      // Method 2: Fetch a fake ad script URL (blocked by filter lists)
+      // Method 2: Probe ad script content (catches Brave/uBlock fake 200 responses)
       try {
         const response = await fetch(
-          'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
+          `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?probe=${Date.now()}`,
           {
-            method: 'HEAD',
-            mode: 'no-cors',
+            method: 'GET',
             cache: 'no-store',
+            mode: 'cors',
           }
         );
-        // If we get here without error, ads might not be blocked
-        // But no-cors returns opaque responses, so check type
-        results.push(false);
+
+        if (response.ok) {
+          const text = (await response.text()).toLowerCase();
+          const looksLikeBlockerStub =
+            text.includes('ublock origin') ||
+            text.includes('adsbygoogle-placeholder') ||
+            text.includes('github.com/gorhill/ublock');
+          results.push(looksLikeBlockerStub);
+        } else {
+          results.push(false);
+        }
       } catch {
-        // Network error = blocked
-        results.push(true);
+        // CORS/network can fail even without blockers, so keep inconclusive
+        results.push(false);
       }
 
-      // Method 3: Check if common ad-related global variables are nuked
+      // Method 3: Script load probe to known ad host (ERR_BLOCKED_BY_CLIENT => blocked)
       try {
-        const testScript = document.createElement('script');
-        testScript.src =
-          'data:text/javascript,window.__adblockTest=true';
-        testScript.async = true;
+        const blockedByScriptProbe = await new Promise<boolean>((resolve) => {
+          const script = document.createElement('script');
+          script.src = `https://securepubads.g.doubleclick.net/tag/js/gpt.js?probe=${Date.now()}`;
+          script.async = true;
 
-        // Also try creating a named ad element
+          const cleanup = () => {
+            script.onload = null;
+            script.onerror = null;
+            script.remove();
+          };
+
+          const timeout = window.setTimeout(() => {
+            cleanup();
+            resolve(true);
+          }, 2500);
+
+          script.onload = () => {
+            clearTimeout(timeout);
+            cleanup();
+            resolve(false);
+          };
+
+          script.onerror = () => {
+            clearTimeout(timeout);
+            cleanup();
+            resolve(true);
+          };
+
+          document.head.appendChild(script);
+        });
+
+        results.push(blockedByScriptProbe);
+      } catch {
+        results.push(false);
+      }
+
+      // Method 4: Check if common ad-related elements are force-hidden
+      try {
         const adDiv = document.createElement('div');
         adDiv.id = 'ad-container-test-' + Date.now();
-        adDiv.className = 'ad ad-slot ad-zone';
+        adDiv.className = 'ad ad-slot ad-zone adsbygoogle';
         adDiv.style.cssText =
           'position:fixed;top:-1px;left:-1px;width:1px;height:1px;overflow:hidden;';
         document.body.appendChild(adDiv);
@@ -80,8 +120,10 @@ export function useAdBlockDetector() {
         await new Promise((r) => setTimeout(r, 200));
 
         const blocked =
-          adDiv.offsetParent === null &&
-          adDiv.offsetHeight === 0;
+          adDiv.offsetParent === null ||
+          adDiv.offsetHeight === 0 ||
+          getComputedStyle(adDiv).display === 'none' ||
+          getComputedStyle(adDiv).visibility === 'hidden';
 
         results.push(blocked);
         adDiv.remove();
@@ -89,22 +131,13 @@ export function useAdBlockDetector() {
         results.push(false);
       }
 
-      // Method 4: Brave-specific detection
+      // Method 5: Brave-specific double-check
       try {
         // @ts-ignore - Brave exposes navigator.brave
         const isBrave = navigator.brave && (await navigator.brave.isBrave());
         if (isBrave) {
-          // Brave has shields on by default — double-check with a fetch
-          try {
-            await fetch('https://static.ads-twitter.com/uwt.js', {
-              method: 'HEAD',
-              mode: 'no-cors',
-              cache: 'no-store',
-            });
-            results.push(false);
-          } catch {
-            results.push(true);
-          }
+          const braveBlocked = results.some((r) => r === true);
+          results.push(braveBlocked);
         }
       } catch {
         // Not Brave or detection failed
