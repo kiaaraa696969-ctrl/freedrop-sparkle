@@ -68,6 +68,7 @@ const AccountReveal = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {adBlockDetected && <AdBlockOverlay onRecheck={recheck} />}
       <nav className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
           <Link to={`/account/${account.slug}`} className="text-muted-foreground hover:text-foreground transition-colors">
