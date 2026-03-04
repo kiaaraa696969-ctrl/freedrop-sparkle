@@ -109,7 +109,7 @@ const AccountReveal = () => {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 mb-6">
+        <div className={`bg-card border border-border rounded-2xl p-6 sm:p-8 mb-6 ${adBlockDetected ? 'blur-lg select-none pointer-events-none' : ''}`}>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-5">
             {account.category === 'Netflix' && account.netflixType === 'cookies' ? 'Cookie File' : 'Account Credentials'}
           </h2>
