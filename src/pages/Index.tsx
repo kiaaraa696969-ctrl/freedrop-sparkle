@@ -5,7 +5,7 @@ import { RightSidebar } from '@/components/RightSidebar';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronDown, Megaphone, ExternalLink, LogIn, LogOut, Shield, User, Users } from 'lucide-react';
+import { ChevronDown, Megaphone, ExternalLink, LogIn, LogOut, Shield, User, Users, Search, X } from 'lucide-react';
 import { useOnlineUsers } from '@/hooks/useOnlineUsers';
 import { AdSlot } from '@/components/AdSlot';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
