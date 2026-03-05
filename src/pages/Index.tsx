@@ -69,6 +69,10 @@ const Index = () => {
             <span className="text-sm text-muted-foreground">
               {available} available
             </span>
+            <Link to="/changelog" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <ScrollText className="w-3.5 h-3.5" />
+              Changelog
+            </Link>
             {isAdmin && (
               <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
                 <Shield className="w-3.5 h-3.5" />
