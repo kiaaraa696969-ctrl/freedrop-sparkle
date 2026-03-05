@@ -14,6 +14,7 @@ import logo from '@/assets/logo.webp';
 
 const Index = () => {
   const { user, isAdmin, signOut, displayName, avatarUrl } = useAuth();
+  const onlineCount = useOnlineUsers();
   const [accounts, setAccounts] = useState<AccountDrop[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
