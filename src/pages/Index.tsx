@@ -17,6 +17,8 @@ const Index = () => {
   const onlineCount = useOnlineUsers();
   const [accounts, setAccounts] = useState<AccountDrop[]>([]);
   const [showAll, setShowAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   useEffect(() => {
@@ -31,7 +33,12 @@ const Index = () => {
       });
   }, []);
 
-  const filtered = accounts;
+  const filtered = searchQuery
+    ? accounts.filter(a =>
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : accounts;
   const visible = showAll ? filtered : filtered.slice(0, 6);
   const available = accounts.filter(a => !a.isClaimed).length;
 
