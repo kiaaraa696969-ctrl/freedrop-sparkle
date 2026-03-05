@@ -101,6 +101,32 @@ const Index = () => {
         </div>
       </nav>
 
+      {searchOpen && (
+        <div className="border-b border-border bg-background/95 backdrop-blur-xl sticky top-16 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search accounts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-12 sm:pt-20 sm:pb-14">
         <h1 className="text-4xl sm:text-5xl font-bold text-foreground leading-tight mb-4">
           Free Premium<br />
