@@ -5,7 +5,7 @@ import { RightSidebar } from '@/components/RightSidebar';
 import { AnnouncementBanner } from '@/components/AnnouncementBanner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronDown, Megaphone, ExternalLink, LogIn, LogOut, Shield, User, Users } from 'lucide-react';
+import { ChevronDown, Megaphone, ExternalLink, LogIn, LogOut, Shield, User, Users, Search, X } from 'lucide-react';
 import { useOnlineUsers } from '@/hooks/useOnlineUsers';
 import { AdSlot } from '@/components/AdSlot';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -17,6 +17,8 @@ const Index = () => {
   const onlineCount = useOnlineUsers();
   const [accounts, setAccounts] = useState<AccountDrop[]>([]);
   const [showAll, setShowAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   useEffect(() => {
@@ -31,7 +33,12 @@ const Index = () => {
       });
   }, []);
 
-  const filtered = accounts;
+  const filtered = searchQuery
+    ? accounts.filter(a =>
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : accounts;
   const visible = showAll ? filtered : filtered.slice(0, 6);
   const available = accounts.filter(a => !a.isClaimed).length;
 
@@ -45,6 +52,13 @@ const Index = () => {
             <span className="text-lg font-bold text-foreground">Ancient Blood</span>
           </Link>
           <div className="flex items-center gap-5">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -86,6 +100,32 @@ const Index = () => {
           </div>
         </div>
       </nav>
+
+      {searchOpen && (
+        <div className="border-b border-border bg-background/95 backdrop-blur-xl sticky top-16 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search accounts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-12 sm:pt-20 sm:pb-14">
         <h1 className="text-4xl sm:text-5xl font-bold text-foreground leading-tight mb-4">
