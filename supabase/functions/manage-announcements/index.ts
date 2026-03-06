@@ -61,6 +61,6 @@ Deno.serve(async (req) => {
 
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
