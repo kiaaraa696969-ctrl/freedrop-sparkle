@@ -28,6 +28,7 @@ export function RightSidebar({ accounts }: RightSidebarProps) {
 
   return (
     <aside className="w-full space-y-5">
+      {/* Single sidebar ad — desktop only via parent */}
       <AdSlot slotName="sidebar_top" fallbackHeight="h-[250px]" />
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -76,8 +77,6 @@ export function RightSidebar({ accounts }: RightSidebarProps) {
         </div>
       </div>
 
-      <AdSlot slotName="sidebar_middle" fallbackHeight="h-[300px]" />
-
       <div className="bg-card border border-border rounded-2xl p-4">
         <h3 className="text-sm font-bold text-foreground mb-3">Quick Links</h3>
         <div className="space-y-2">
@@ -86,8 +85,6 @@ export function RightSidebar({ accounts }: RightSidebarProps) {
           <QuickLink label="Request Account" href="#" />
         </div>
       </div>
-
-      <AdSlot slotName="sidebar_bottom" fallbackHeight="h-[200px]" />
     </aside>
   );
 }

@@ -176,6 +176,7 @@ const Index = () => {
         </div>
       )}
 
+      {/* Top banner ad — high visibility, non-intrusive */}
       <div className="max-w-7xl mx-auto px-6 pb-8">
         <AdSlot slotName="hero_below" fallbackHeight="h-[90px]" />
       </div>
@@ -194,6 +195,7 @@ const Index = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {visible.map((account, i) => {
                     const items = [<AccountCard key={account.id} account={account} />];
+                    {/* In-feed ad after 4th card — natural break point */}
                     if (i === 3 && visible.length > 4) {
                       items.push(
                         <div key="feed-ad" className="sm:col-span-2">
@@ -219,6 +221,7 @@ const Index = () => {
             )}
           </div>
 
+          {/* Sidebar — desktop only, single ad */}
           <div className="hidden lg:block w-[300px] shrink-0 sticky top-20">
             <RightSidebar accounts={accounts} />
           </div>
@@ -229,11 +232,10 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Footer ad */}
       <div className="max-w-7xl mx-auto px-6 pb-8">
         <AdSlot slotName="footer_above" fallbackHeight="h-[90px]" />
       </div>
-
-      <AdSlot slotName="social_bar" fallbackHeight="h-0" className="fixed bottom-0 left-0 right-0 z-[999]" />
 
       <footer className="border-t border-border py-8">
         <div className="max-w-7xl mx-auto px-6 text-center">

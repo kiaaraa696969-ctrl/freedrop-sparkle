@@ -182,7 +182,7 @@ const AccountDetail = () => {
           </div>
         </div>
 
-        <div className="mb-10">
+        <div className="my-10">
           <AdSlot slotName="detail_bottom" fallbackHeight="h-[250px]" />
         </div>
 

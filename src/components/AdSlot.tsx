@@ -16,11 +16,9 @@ const renderedZones = new Set<string>();
 
 /* Extract the Adsterra zone key from ad code */
 function extractZoneKey(adCode: string): string | null {
-  // Match 'key' : 'xxx' or key: 'xxx'
   const keyMatch = adCode.match(/['"]?key['"]?\s*:\s*['"]([a-f0-9]{32})['"]/);
   if (keyMatch) return keyMatch[1];
 
-  // Match /xxx/invoke.js or /xx/xx/xx/xxx.js
   const srcMatch = adCode.match(/encyclopediainsoluble\.com\/([a-f0-9]{32})\/invoke\.js/);
   if (srcMatch) return srcMatch[1];
 
@@ -33,14 +31,11 @@ function extractZoneKey(adCode: string): string | null {
 /* ─── Slot config ─── */
 const SLOT_CONFIG: Record<string, { height: number; width: number; eager: boolean; responsive: boolean }> = {
   hero_below:     { height: 90,  width: 728, eager: true,  responsive: true },
-  feed_between:   { height: 60,  width: 468, eager: false, responsive: true },
+  feed_between:   { height: 90,  width: 468, eager: false, responsive: true },
   footer_above:   { height: 90,  width: 728, eager: false, responsive: true },
   detail_top:     { height: 90,  width: 728, eager: true,  responsive: true },
   detail_bottom:  { height: 250, width: 300, eager: false, responsive: true },
   sidebar_top:    { height: 250, width: 300, eager: false, responsive: false },
-  sidebar_middle: { height: 300, width: 300, eager: false, responsive: false },
-  sidebar_bottom: { height: 250, width: 300, eager: false, responsive: false },
-  social_bar:     { height: 60,  width: 0,   eager: true,  responsive: false },
 };
 
 async function loadAds() {
@@ -83,17 +78,12 @@ export function invalidateAdCache() {
 }
 
 /* Reset rendered zones on SPA navigation */
-function resetRenderedZonesOnNavigation() {
-  renderedZones.clear();
-}
-
-// Listen for route changes to reset zone tracking
 if (typeof window !== 'undefined') {
   let lastPath = window.location.pathname;
   const observer = new MutationObserver(() => {
     if (window.location.pathname !== lastPath) {
       lastPath = window.location.pathname;
-      resetRenderedZonesOnNavigation();
+      renderedZones.clear();
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
@@ -122,12 +112,11 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
           const code = adCache?.[slotName] || '';
           setAdCode(code);
 
-          // Check for zone duplication
           if (code) {
             const zoneKey = extractZoneKey(code);
             if (zoneKey) {
               if (renderedZones.has(zoneKey)) {
-                console.warn(`[AdSlot] Duplicate zone ${zoneKey} blocked for slot "${slotName}". Each slot needs a unique Adsterra zone.`);
+                console.warn(`[AdSlot] Duplicate zone ${zoneKey} blocked for slot "${slotName}".`);
                 setIsDuplicate(true);
               } else {
                 renderedZones.add(zoneKey);
@@ -147,7 +136,6 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
 
     return () => {
       cancelled = true;
-      // Clean up zone tracking on unmount
       if (adCode) {
         const zoneKey = extractZoneKey(adCode);
         if (zoneKey) renderedZones.delete(zoneKey);
@@ -172,7 +160,7 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
           observerRef.current?.disconnect();
         }
       },
-      { rootMargin: '200px' } // Start loading 200px before viewport
+      { rootMargin: '200px' }
     );
 
     observerRef.current.observe(el);
@@ -190,7 +178,6 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
     const container = containerRef.current;
     container.innerHTML = '';
 
-    // Parse ad HTML
     const temp = document.createElement('div');
     temp.innerHTML = adCode;
 
@@ -209,10 +196,8 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
       }
     });
 
-    // Append non-script nodes first (containers, divs)
     nodes.forEach((n) => container.appendChild(n));
 
-    // Execute scripts sequentially (atOptions MUST be set before invoke.js)
     let chain = Promise.resolve();
     scripts.forEach(({ src, text, async: isAsync }) => {
       chain = chain.then(
@@ -227,7 +212,7 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
                 if (isAsync) s.async = true;
                 s.onload = () => resolve();
                 s.onerror = () => {
-                  console.warn(`[AdSlot] Script failed to load for "${slotName}": ${src}`);
+                  console.warn(`[AdSlot] Script failed for "${slotName}": ${src}`);
                   resolve();
                 };
                 container.appendChild(s);
@@ -239,7 +224,7 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
                 resolve();
               }
             } catch (e) {
-              console.warn(`[AdSlot] Script execution error for "${slotName}":`, e);
+              console.warn(`[AdSlot] Script error for "${slotName}":`, e);
               resolve();
             }
           })
@@ -255,47 +240,40 @@ export function AdSlot({ slotName, fallbackHeight = 'h-[250px]', className = '' 
 
   // ─── Empty / not loaded states ───
   if (loaded && (!adCode || adCode.trim() === '' || isDuplicate)) {
-    // For social_bar, render nothing if empty/duplicate
-    if (slotName === 'social_bar') return null;
-
     return (
       <div
-        className={`${fallbackHeight} bg-muted border border-border border-dashed rounded-2xl flex flex-col items-center justify-center ${className}`}
+        className={`${fallbackHeight} bg-muted/50 border border-border border-dashed rounded-2xl flex flex-col items-center justify-center ${className}`}
       >
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-          Advertisement
+        <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest">
+          Ad
         </span>
-        <span className="text-[10px] text-muted-foreground/60 mt-1">Ad space</span>
       </div>
     );
   }
 
   if (!loaded) {
-    // Reserve space to prevent layout shift
-    const reservedHeight = config.height;
     return (
       <div
         ref={containerRef}
-        className={`rounded-2xl bg-muted/30 ${className}`}
-        style={{ minHeight: `${reservedHeight}px` }}
+        className={`rounded-2xl bg-muted/20 ${className}`}
+        style={{ minHeight: `${config.height}px` }}
       />
     );
   }
 
   // ─── Render ───
-  const isSocialBar = slotName === 'social_bar';
-
   return (
     <div
       ref={containerRef}
-      className={`ad-slot w-full overflow-hidden ${className}`}
+      className={`ad-slot w-full overflow-hidden rounded-xl ${className}`}
       data-slot={slotName}
       style={{
-        minHeight: isSocialBar ? undefined : `${config.height}px`,
-        maxWidth: config.responsive && config.width > 0 ? '100%' : undefined,
+        minHeight: `${config.height}px`,
+        maxWidth: config.responsive && config.width > 0 ? '100%' : `${config.width}px`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
+        margin: '0 auto',
       }}
     />
   );
