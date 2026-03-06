@@ -53,6 +53,57 @@ export function useAdBlockDetector() {
         }
       } catch {}
 
+      // Method 5: Multiple ad network probe (catches Coc Coc & other built-in blockers)
+      const adUrls = [
+        'https://www.googletagservices.com/tag/js/gpt.js',
+        'https://cdn.carbonads.com/carbon.js',
+        'https://m.servedby-buysellads.com/monetization.js',
+        'https://cdn.fuseplatform.net/publift/tags/2/fuse.js',
+        'https://a.pub.network/core/pubfig/cls.js',
+      ];
+      for (const url of adUrls) {
+        try {
+          const resp = await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+          // Some built-in blockers return opaque responses with status 0 but don't throw
+          if (resp.status === 0 && resp.type === 'opaque') {
+            // This is expected for no-cors, not blocked
+          }
+          results.push(false);
+        } catch {
+          results.push(true);
+          break; // One blocked = detected
+        }
+      }
+
+      // Method 6: Inline script bait (catches content-filtering blockers)
+      try {
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.id = 'ad-script-test-' + Date.now();
+        script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?probe=' + Date.now();
+        let scriptBlocked = true;
+        script.onload = () => { scriptBlocked = false; };
+        script.onerror = () => { scriptBlocked = true; };
+        document.head.appendChild(script);
+        await new Promise((r) => setTimeout(r, 1500));
+        results.push(scriptBlocked);
+        script.remove();
+      } catch { results.push(true); }
+
+      // Method 7: Double-check with iframe bait
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.id = 'adbanner-iframe-' + Date.now();
+        iframe.className = 'adsbox ad-banner';
+        iframe.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;border:0;';
+        iframe.src = 'about:blank';
+        document.body.appendChild(iframe);
+        await new Promise((r) => setTimeout(r, 200));
+        const iframeBlocked = iframe.offsetHeight === 0 || iframe.clientHeight === 0 || getComputedStyle(iframe).display === 'none';
+        results.push(iframeBlocked);
+        iframe.remove();
+      } catch { results.push(false); }
+
       if (cancelled) return;
       setAdBlockDetected(results.some((r) => r === true));
     };
